@@ -2,9 +2,9 @@
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:guya/config_state.dart';
-import 'package:guya/options_menu.dart';
-import 'package:guya/video_desc.dart';
+import 'package:dougamoe/config_state.dart';
+import 'package:dougamoe/options_menu.dart';
+import 'package:dougamoe/video_desc.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 

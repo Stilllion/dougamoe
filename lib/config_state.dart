@@ -7,7 +7,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:guya/video_desc.dart';
+import 'package:dougamoe/video_desc.dart';
 
 enum AppState {
   IDLE,
