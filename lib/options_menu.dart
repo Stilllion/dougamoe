@@ -25,7 +25,7 @@ class _OptionsMenuState extends State<OptionsMenu> {
 
   @override
   Widget build(BuildContext context) {
-    return MenuAnchor(
+    return MenuAnchor(        
       childFocusNode: _buttonFocusNode,
       menuChildren: <Widget>[
         ...Iterable.generate(widget.entries.length, (index){
@@ -34,16 +34,17 @@ class _OptionsMenuState extends State<OptionsMenu> {
              
       ],
       builder: (BuildContext context, MenuController controller, Widget? child) {
-        return TextButton(
+        return OutlinedButton(
           focusNode: _buttonFocusNode,
-          onPressed: () {
-            if (controller.isOpen) {
+          onPressed: () async {
+              if (controller.isOpen) {
               controller.close();
             } else {
               controller.open();
             }
-          },
-          child: Text(widget.value),
+          },         
+          // icon: Icon(Icons.arrow_downward_sharp),
+          child: Text(widget.value, style: TextStyle(fontSize: 20),)
         );
       },
     );

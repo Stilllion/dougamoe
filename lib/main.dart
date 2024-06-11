@@ -17,13 +17,30 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
+      themeMode: ThemeMode.dark,
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.pink, brightness: Brightness.dark),
+        textTheme: TextTheme(
+          displayMedium: TextStyle(
+            fontSize: 42
+          ),
+        ),
+
+        /* dark theme settings */
+      ),
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.pink),
+        brightness: Brightness.light,      
+        textTheme: TextTheme(
+          displayMedium: TextStyle(
+            fontSize: 42
+          ),
+        ),
         useMaterial3: true,
       ),
       home: const MyHomePage(title: 'Flutter Demo Home Page'),
@@ -53,50 +70,106 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            TextField(
-              controller: urlTextController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Enter video URL...',
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(                              
+                decoration: InputDecoration(
+                  hoverColor: Colors.red,
+                  // filled: true,                  
+                  // fillColor: Colors.grey,
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: Colors.pink.shade100, // You can change the color here
+                      width: 4.0, // You can adjust the thickness here
+                    ),
+                    borderRadius: BorderRadius.circular(10.0), // You can adjust the border radius here
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: Colors.pink.shade200, // You can change the color here
+                      width: 4.0, // You can adjust the thickness here
+                    ),
+                    borderRadius: BorderRadius.circular(10.0), // You can adjust the border radius here
+                  ),
+                  
+                  hintText: 'Enter video URL...',
+                ),
+                onChanged: (value){
+                  config.updateUrl(value);
+                },
               ),
-              onChanged: (value){
-                config.updateUrl(value);
-              },
             ),
-
+      
             const SizedBox(height: 16,),
             
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () async{
-                    String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
-                    
-                    if (selectedDirectory != null) {
-                      config.setDownloadPath(selectedDirectory);                  
-                    }
-                  },
-                  icon: Icon(Icons.folder)
-                ),
+            Padding(
+              padding: const EdgeInsets.only(left: 16.0, right: 16),
+              child: Row(
+                children: [
+                   Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                        Text("Download path"),
+                        
+                        const SizedBox(height: 8,),
+      
+                        OutlinedButton.icon(
+                        onPressed: () async {
+                          String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+                      
+                          if (selectedDirectory != null) {
+                            config.setDownloadPath(selectedDirectory);                  
+                          }
+                        }, icon: Icon(Icons.folder),
+                        label: Text(context.watch<ConfigState>().downloadPath),
+                      ),
+                    ],
+                  ),
+                  // IconButton(
+                  //   onPressed: () async{
+                  //     String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+                      
+                  //     if (selectedDirectory != null) {
+                  //       config.setDownloadPath(selectedDirectory);                  
+                  //     }
+                  //   },
+                  //   icon: Icon(Icons.folder)
+                  // ),
+                  const SizedBox(width: 16,),
+              
+                  // Text(),
+                  
+                  Expanded(child: SizedBox()),
+                  
                 
-                Text(context.read<ConfigState>().downloadPath),
-                
-                Expanded(child: SizedBox()),
-                
-                ElevatedButton(
-                  onPressed: (){
-                    context.read<ConfigState>().download();
-                  }, child: Text("DOWNLOAD")
-                )
-              ],
+                ],
+              ),
             ),
             
             const SizedBox(height: 32,),
             
             
-            DownloadOptions(),
-            
-            LoadingIndicator(),
+            Padding(
+              padding: const EdgeInsets.only(right: 30.0, left: 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ElevatedButton.icon(                
+                    onPressed: (){
+                      context.read<ConfigState>().download();
+                    }, label: Text("DOWNLOAD"),
+                    icon: Icon(Icons.download),
+                  ),
+                  DownloadOptions(),
+                ],
+              ),
+            ),
+                          
+            Padding(
+              padding: const EdgeInsets.only(top: 24.0),
+              child: Center(child: LoadingIndicator()),
+            ),
             
             Expanded(child: InfoDisplay())
           ],
@@ -106,6 +179,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 class LoadingIndicator extends StatelessWidget{
+  const LoadingIndicator({super.key});
+
   @override
   Widget build(BuildContext context) {
     if (context.select<ConfigState, AppState>((config) => config.currentState) == AppState.LOADING_DATA)
@@ -127,7 +202,42 @@ class InfoDisplay extends StatelessWidget{
     return Selector<ConfigState, List<VideoDescrtiption>>(
       selector: (BuildContext , ConfigState) => ConfigState.videoDescrtiptions,
       builder: (BuildContext context, List<VideoDescrtiption> value, Widget? child) {
-        return VideoList();
+        return Column(
+          children: [            
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 0.0, right: 0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                        width: 4,
+                        color: Colors.pink.shade100
+                      ),
+                      
+                      // left: BorderSide(
+                      //   width: 1,
+                      //   color: Colors.pink.shade100
+                      // ),
+                      
+                      // right: BorderSide(
+                      //   width: 1,
+                      //   color: Colors.pink.shade100
+                      // ),
+                    ),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12)
+                    )
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: VideoList(),
+                  )),
+              ),
+            ),
+          ],
+        );
       }
     );
   }
@@ -147,7 +257,7 @@ class VideoList extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 8.0),
           child: Container(
             height: 64,
-            color: Colors.pink.shade50,
+            // color: Colors.pink.shade50,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -157,10 +267,13 @@ class VideoList extends StatelessWidget {
                           CircularProgressIndicator(value: downloadProgress.progress),
                   errorWidget: (context, url, error) => Icon(Icons.error),
                 ),
+                
+                SizedBox(width: 12,),
+                
                 Text(
                   context.watch<ConfigState>().videoDescrtiptions[index].title
                 ),
-
+          
                 Expanded(child: SizedBox()),
                 
                 Padding(
@@ -199,63 +312,93 @@ class DownloadOptions extends StatelessWidget {
           Column(
             children: [
               Text("Audio Cotainer"),
-
-              OptionsMenu(
-                value: config.selectedAudioContainer.ext,         
-                entries: AudioContainer.values.map<MenuItemButton>((AudioContainer containerOption) {
-                  return MenuItemButton(
-                    onPressed: () {
-                      config.changeAudioContainer(containerOption);
-                    },
-                    child: Text(                  
-                      containerOption.ext,
-                    )
-                  );
-                }).toList()
+              
+              SizedBox(height: 8,),
+              
+              Container(
+                width: 100,
+                child: OptionsMenu(
+                  value: config.selectedAudioContainer.ext,                
+                  entries: AudioContainer.values.map<MenuItemButton>((AudioContainer containerOption) {
+                    return MenuItemButton(                                        
+                      onPressed: () {
+                        config.changeAudioContainer(containerOption);
+                      },
+                      child: Container(
+                        width: 86,
+                        child: Text(                  
+                          containerOption.ext,
+                        ),
+                      ),
+                    );
+                  }).toList()
+                ),
               ),
             ],
           ),
-
-           Column(
-             children: [
-                Text("Video Cotainer"),
+          
+          SizedBox(width: 12,),
+          
+          Column(
+            children: [
+              Text("Video Cotainer"),
               
-                OptionsMenu(
+              SizedBox(height: 8,),
+              
+              Container(
+                width: 100,
+                child: OptionsMenu(
                   value: config.selectedVideoContainer.ext,         
                   entries: VideoContainer.values.map<MenuItemButton>((VideoContainer containerOption) {
                     return MenuItemButton(
                       onPressed: () {
                         config.changeVideoContainer(containerOption);
                       },
-                      child: Text(                  
-                        containerOption.ext,
+                      child: Container(
+                        width: 86,
+                        child: Text(                  
+                          containerOption.ext,
+                        ),
                       )
                     );
                   }).toList()
                 ),
-             ],
-           ),
+              ),
+            ],
+          ),
+
+          SizedBox(width: 12,),
 
           Column(
             children: [
               Text("Video Height"),
-
-              OptionsMenu(
-                value: config.selectedVideoHeight.res,         
-                entries: VideoHeight.values.map<MenuItemButton>((VideoHeight resOption) {
-                  return MenuItemButton(
-                    onPressed: () {
-                      config.changeOutputHeigth(resOption);
-                    },
-                    child: Text(                  
-                      resOption.res,
-                    )
-                  );
-                }).toList()
+              
+              SizedBox(height: 8,),
+              
+              Container(
+                width: 100,
+                child: OptionsMenu(
+                  value: config.selectedVideoHeight.res,         
+                  entries: VideoHeight.values.map<MenuItemButton>((VideoHeight resOption) {
+                    return MenuItemButton(
+                      onPressed: () {
+                        config.changeOutputHeigth(resOption);
+                      },
+                      child: Container(
+                        width: 86,
+                        child: Text(                  
+                          resOption.res,
+                        ),
+                      )
+                    );
+                  }).toList()
+                ),
               ),
             ],
           ),
           
+          SizedBox(width: 24,),
+
           Column(
             children: [
 
@@ -271,7 +414,9 @@ class DownloadOptions extends StatelessWidget {
               ),
             ],
           ),
-
+          
+          SizedBox(width: 8,),
+          
           Column(
             children: [
               Text("Video"),
