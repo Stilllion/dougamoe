@@ -74,7 +74,7 @@ class ConfigState extends ChangeNotifier{
     
     if(newUrl.isEmpty){
       // TODO: Resets display info
-      
+      videoDescrtiptions = [];
       currentState = AppState.IDLE;    
     } else {
       videoDescrtiptions.clear();
@@ -216,13 +216,13 @@ class ConfigState extends ChangeNotifier{
     
     if (result.stderr.isNotEmpty) {
       print('Error: ${result.stderr}');
-    } else {
-      List<dynamic> playlistJson = result.stdout.toString().trim().split('\n').map((video) => json.decode(video)).toList();
+    } 
+    List<dynamic> playlistJson = result.stdout.toString().trim().split('\n').map((video) => json.decode(video)).toList();
 
-      playlistJson.forEach((jsonDesc) {
-        videoDescrtiptions.add(VideoDescrtiption.fromJSON(jsonDesc));
-      });
-    }
+    playlistJson.forEach((jsonDesc) {
+      videoDescrtiptions.add(VideoDescrtiption.fromJSON(jsonDesc));
+    });
+    
 
     // print('${result.stdout}');
     // currentState = AppState.IDLE;
