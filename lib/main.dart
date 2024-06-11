@@ -93,9 +93,10 @@ class _MyHomePageState extends State<MyHomePage> {
             
             const SizedBox(height: 32,),
             
-            LoadingIndicator(),
             
             DownloadOptions(),
+            
+            LoadingIndicator(),
             
             Expanded(child: InfoDisplay())
           ],
@@ -165,7 +166,7 @@ class VideoList extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(right: 16.0),
                   child: Text(
-                    context.watch<ConfigState>().downloadProgress
+                    context.watch<ConfigState>().videoDescrtiptions[index].downloadProgress
                   ),
                 ),
               ],
@@ -194,19 +195,65 @@ class DownloadOptions extends StatelessWidget {
     
       return Row(
         mainAxisAlignment: MainAxisAlignment.end,
-        children: [          
-          OptionsMenu(
-            value: config.selectedVideoHeight.res,         
-            entries: VideoHeight.values.map<MenuItemButton>((VideoHeight resOption) {
-              return MenuItemButton(
-                onPressed: () {
-                  config.changeOutputHeigth(resOption);
-                },
-                child: Text(                  
-                  resOption.res,
-                )
-              );
-            }).toList()
+        children: [   
+          Column(
+            children: [
+              Text("Audio Cotainer"),
+
+              OptionsMenu(
+                value: config.selectedAudioContainer.ext,         
+                entries: AudioContainer.values.map<MenuItemButton>((AudioContainer containerOption) {
+                  return MenuItemButton(
+                    onPressed: () {
+                      config.changeAudioContainer(containerOption);
+                    },
+                    child: Text(                  
+                      containerOption.ext,
+                    )
+                  );
+                }).toList()
+              ),
+            ],
+          ),
+
+           Column(
+             children: [
+                Text("Video Cotainer"),
+              
+                OptionsMenu(
+                  value: config.selectedVideoContainer.ext,         
+                  entries: VideoContainer.values.map<MenuItemButton>((VideoContainer containerOption) {
+                    return MenuItemButton(
+                      onPressed: () {
+                        config.changeVideoContainer(containerOption);
+                      },
+                      child: Text(                  
+                        containerOption.ext,
+                      )
+                    );
+                  }).toList()
+                ),
+             ],
+           ),
+
+          Column(
+            children: [
+              Text("Video Height"),
+
+              OptionsMenu(
+                value: config.selectedVideoHeight.res,         
+                entries: VideoHeight.values.map<MenuItemButton>((VideoHeight resOption) {
+                  return MenuItemButton(
+                    onPressed: () {
+                      config.changeOutputHeigth(resOption);
+                    },
+                    child: Text(                  
+                      resOption.res,
+                    )
+                  );
+                }).toList()
+              ),
+            ],
           ),
           
           Column(

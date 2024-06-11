@@ -31,6 +31,23 @@ enum VideoHeight {
   final String res;
 }
 
+enum VideoContainer {
+  mp4('mp4'),
+  Best('Best');
+
+  const VideoContainer(this.ext);
+  final String ext;
+}
+
+enum AudioContainer {
+  mp4('m4a'),
+  Best('Best');
+
+  const AudioContainer(this.ext);
+  final String ext;
+}
+
+
 class ConfigState extends ChangeNotifier{
   String url = "";
 
@@ -39,13 +56,16 @@ class ConfigState extends ChangeNotifier{
   bool includeAudio = true;
   bool includeVideo = true;
 
-  String downloadPath = ".";
+  String downloadPath = "./dl";
 
   String downloadProgress = "";
 
   VideoHeight selectedVideoHeight = VideoHeight.Best;
 
-  String command = "-o %(title)s.%(ext)s";
+  VideoContainer selectedVideoContainer = VideoContainer.Best;
+  AudioContainer selectedAudioContainer = AudioContainer.Best;
+
+  String outputFile = "%(title)s.%(ext)s";
 
   AppState currentState = AppState.IDLE;
   
@@ -53,7 +73,7 @@ class ConfigState extends ChangeNotifier{
     url = newUrl;
     
     if(newUrl.isEmpty){
-      // TODO: Resets display info2
+      // TODO: Resets display info
       
       currentState = AppState.IDLE;    
     } else {
@@ -71,7 +91,20 @@ class ConfigState extends ChangeNotifier{
 
     notifyListeners();
   }
-  
+
+  void changeVideoContainer(VideoContainer newContainer){
+    selectedVideoContainer = newContainer;
+
+    notifyListeners();
+  }
+
+  void changeAudioContainer(AudioContainer newContainer){
+    selectedAudioContainer = newContainer;
+
+    notifyListeners();
+  }
+
+
   void toggleAudio(){
     includeAudio = !includeAudio;
     notifyListeners();
@@ -90,32 +123,87 @@ class ConfigState extends ChangeNotifier{
 
   // [download]   7.1% of   19.13MiB at  783.17KiB/s ETA 00:23
   void download() async {
+    if(!includeAudio && !includeVideo){
+      return;
+    }
+    // String params = "";
+    StringBuffer params = StringBuffer();
+
+    // params.write("-P $downloadPath");
+
+    // params.write("-o $outputFile");
+    
+    params.write('-f ');
+
+    if(includeVideo){
+      params.write('bv');
+    }
+    if(includeVideo && (selectedVideoHeight != VideoHeight.Best)){
+      params.write('[height<=${selectedVideoHeight.res}]');
+    }
+    if(includeVideo && (selectedVideoContainer != VideoContainer.Best)){
+      params.write('[ext=${selectedVideoContainer.ext}]');
+    }
+
+    if(includeAudio && !includeVideo){
+      params.write('ba');
+    } else if(includeAudio && includeVideo){
+      params.write(' +ba');
+    }
+
+    if(includeAudio && (selectedAudioContainer != AudioContainer.Best)){
+      params.write('[ext=${selectedAudioContainer.ext}]');
+    }
+    
+    // String temp = "-o $outputFile -f bv[height<=144]";
+
     var process = await Process.start('yt-dlp', [
-      ...[],
+      "-P $downloadPath",
+      "-o$outputFile",
+      "-i",
+      params.toString(),
       url,
     ]);
-
     final RegExp downloadProgressRegExp = RegExp(r'\[download\]\s+(\d+\.\d+)%\s+of\s+(\d+\.\d+)([a-zA-Z]+)\s+at\s+(\d+.\d+)([a-zA-Z/]+)');
+    // [download] Downloading item 1 of 28
+    final RegExp indexOutOf = RegExp(r'\[download\] Downloading item (\d+) of (\d+)');
+
+    // https://www.youtube.com/watch?v=Qp3b-RXtz4w&list=PLiQl43ty5itMxxRIXpTSJzTFktwJaGwDQ&pp=gAQBiAQB
+    int currentVideoIndex = 0;
     process.stdout.transform(utf8.decoder).forEach((output) {
-        var match = downloadProgressRegExp.firstMatch(output);
-        // print(output);
-        if(match != null){
-          double progress = double.parse(match.group(1)!);
-          double size = double.parse(match.group(2)!);
-          String mb = match.group(3)!;
-          double downloadSpeed = double.parse(match.group(4)!);
-          String speed = match.group(5)!;
-          
-          // String example = "[download]   7.1% of   19.13MiB at  783.17KiB/s ETA 00:23";  
-          downloadProgress = "$progress% of $size $mb";
-          notifyListeners();
+
+      var indexMatch = indexOutOf.firstMatch(output);
+      if(indexMatch != null){
+        if(indexMatch.group(1) != null){
+          currentVideoIndex = int.parse(indexMatch.group(1)!);
         }
+      }
+        print(currentVideoIndex);
+      var match = downloadProgressRegExp.firstMatch(output);
+      // print(output);
+      if(match != null){
+        double progress = double.parse(match.group(1)!);
+        double size = double.parse(match.group(2)!);
+        String mb = match.group(3)!;
+        double downloadSpeed = double.parse(match.group(4)!);
+        String speed = match.group(5)!;
+        
+        // String example = "[download]   7.1% of   19.13MiB at  783.17KiB/s ETA 00:23";  
+        videoDescrtiptions[currentVideoIndex].downloadProgress = "$progress% of $size $mb";
+        notifyListeners();
+      }
+      // }
+    });
+
+    process.stderr.transform(utf8.decoder).forEach((output) {
+        print(output);
       // }
     });
   }
 
   void getVideoInfo() async{
     var infoArgs = [
+      "-i",
       "--skip-download",
       "--flat-playlist",
       // "--no-warnings",
