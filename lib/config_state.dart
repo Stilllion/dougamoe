@@ -16,6 +16,21 @@ enum AppState {
   DOWNLOADING
 }
 
+enum VideoHeight {
+  v144p('144'),
+  v240p('240'),
+  v360p('360'),
+  v480p('480'),
+  v720p('720'),
+  v1080p('1080'),
+  v1440p('1440'),
+  v2160p('2160'),
+  Best('Best');
+
+  const VideoHeight(this.res);
+  final String res;
+}
+
 class ConfigState extends ChangeNotifier{
   String url = "";
 
@@ -28,13 +43,17 @@ class ConfigState extends ChangeNotifier{
 
   String downloadProgress = "";
 
+  VideoHeight selectedVideoHeight = VideoHeight.Best;
+
+  String command = "-o %(title)s.%(ext)s";
+
   AppState currentState = AppState.IDLE;
   
   void updateUrl(String newUrl){
     url = newUrl;
     
     if(newUrl.isEmpty){
-      // TODO: Resets display info
+      // TODO: Resets display info2
       
       currentState = AppState.IDLE;    
     } else {
@@ -43,6 +62,12 @@ class ConfigState extends ChangeNotifier{
       currentState = AppState.LOADING_DATA;
       getVideoInfo();
     }  
+
+    notifyListeners();
+  }
+
+  void changeOutputHeigth(VideoHeight newHeight){
+    selectedVideoHeight = newHeight;
 
     notifyListeners();
   }
@@ -112,7 +137,8 @@ class ConfigState extends ChangeNotifier{
     }
 
     // print('${result.stdout}');
-    currentState = AppState.IDLE;      
+    // currentState = AppState.IDLE;
+    currentState = AppState.LOADED;
     notifyListeners();
     // var process = await Process.start('yt-dlp', [
     //   ...infoArgs,

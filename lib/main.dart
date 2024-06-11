@@ -3,6 +3,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:guya/config_state.dart';
+import 'package:guya/options_menu.dart';
 import 'package:guya/video_desc.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
@@ -47,13 +48,6 @@ class _MyHomePageState extends State<MyHomePage> {
     ConfigState config = Provider.of<ConfigState>(context, listen: false);
     
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
       body: Center(      
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
@@ -98,7 +92,11 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             
             const SizedBox(height: 32,),
-
+            
+            LoadingIndicator(),
+            
+            DownloadOptions(),
+            
             Expanded(child: InfoDisplay())
           ],
         ),
@@ -106,16 +104,9 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
-
-class InfoDisplay extends StatelessWidget{
-  const InfoDisplay({Key? key}) : super(key: key);
-
+class LoadingIndicator extends StatelessWidget{
   @override
   Widget build(BuildContext context) {
-    // if (context.watch<ConfigState>().currentState == AppState.IDLE)
-    //   return Text("IDELING...");
-    // ConfigState config = Provider.of<ConfigState>(context);
-    
     if (context.select<ConfigState, AppState>((config) => config.currentState) == AppState.LOADING_DATA)
       return Container(
         width: 24,
@@ -123,6 +114,15 @@ class InfoDisplay extends StatelessWidget{
         child: CircularProgressIndicator()
       );
 
+    return SizedBox.shrink();
+  }
+  
+}
+class InfoDisplay extends StatelessWidget{
+  const InfoDisplay({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
     return Selector<ConfigState, List<VideoDescrtiption>>(
       selector: (BuildContext , ConfigState) => ConfigState.videoDescrtiptions,
       builder: (BuildContext context, List<VideoDescrtiption> value, Widget? child) {
@@ -160,7 +160,6 @@ class VideoList extends StatelessWidget {
                   context.watch<ConfigState>().videoDescrtiptions[index].title
                 ),
 
-                // SizedBox(width: 32,),
                 Expanded(child: SizedBox()),
                 
                 Padding(
@@ -185,5 +184,64 @@ class VideoList extends StatelessWidget {
           //   style: Theme.of(context).textTheme.headlineMedium,
           // ),    
     );
+  }
+}
+
+class DownloadOptions extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    ConfigState config = Provider.of<ConfigState>(context);
+    
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [          
+          OptionsMenu(
+            value: config.selectedVideoHeight.res,         
+            entries: VideoHeight.values.map<MenuItemButton>((VideoHeight resOption) {
+              return MenuItemButton(
+                onPressed: () {
+                  config.changeOutputHeigth(resOption);
+                },
+                child: Text(                  
+                  resOption.res,
+                )
+              );
+            }).toList()
+          ),
+          
+          Column(
+            children: [
+
+              Text("Audio"),
+
+              Checkbox(
+                // checkColor: Colors.pink,
+                // fillColor: MaterialStateProperty.resolveWith(getColor),
+                value: config.includeAudio,
+                onChanged: (bool? value) {
+                  config.toggleAudio();
+                },
+              ),
+            ],
+          ),
+
+          Column(
+            children: [
+              Text("Video"),
+              
+              Checkbox(
+                // checkColor: Colors.pink,
+                // fillColor: MaterialStateProperty.resolveWith(getColor),
+                value: config.includeVideo,
+                onChanged: (bool? value) {
+                  config.toggleVideo();
+                },
+              ),
+            ],
+          ),
+        ],
+      );
+
+    // return SizedBox.shrink();
   }
 }
