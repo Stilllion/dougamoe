@@ -69,7 +69,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 config.updateUrl(value);
               },
             ),
-           
+
             const SizedBox(height: 16,),
             
             Row(
@@ -146,8 +146,9 @@ class VideoList extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 8.0),
           child: Container(
             height: 64,
-            color: Colors.pink.shade100,
+            color: Colors.pink.shade50,
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 CachedNetworkImage(
                   imageUrl: context.read<ConfigState>().videoDescrtiptions[index].thumbnaillUrl,
@@ -157,6 +158,16 @@ class VideoList extends StatelessWidget {
                 ),
                 Text(
                   context.watch<ConfigState>().videoDescrtiptions[index].title
+                ),
+
+                // SizedBox(width: 32,),
+                Expanded(child: SizedBox()),
+                
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: Text(
+                    context.watch<ConfigState>().downloadProgress
+                  ),
                 ),
               ],
             ),

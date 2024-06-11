@@ -26,6 +26,8 @@ class ConfigState extends ChangeNotifier{
 
   String downloadPath = ".";
 
+  String downloadProgress = "";
+
   AppState currentState = AppState.IDLE;
   
   void updateUrl(String newUrl){
@@ -36,6 +38,8 @@ class ConfigState extends ChangeNotifier{
       
       currentState = AppState.IDLE;    
     } else {
+      videoDescrtiptions.clear();
+
       currentState = AppState.LOADING_DATA;
       getVideoInfo();
     }  
@@ -59,14 +63,29 @@ class ConfigState extends ChangeNotifier{
     notifyListeners();
   }
 
+  // [download]   7.1% of   19.13MiB at  783.17KiB/s ETA 00:23
   void download() async {
     var process = await Process.start('yt-dlp', [
       ...[],
       url,
     ]);
 
-    process.stdout.transform(utf8.decoder).forEach((element) {
-      print(element);
+    final RegExp downloadProgressRegExp = RegExp(r'\[download\]\s+(\d+\.\d+)%\s+of\s+(\d+\.\d+)([a-zA-Z]+)\s+at\s+(\d+.\d+)([a-zA-Z/]+)');
+    process.stdout.transform(utf8.decoder).forEach((output) {
+        var match = downloadProgressRegExp.firstMatch(output);
+        // print(output);
+        if(match != null){
+          double progress = double.parse(match.group(1)!);
+          double size = double.parse(match.group(2)!);
+          String mb = match.group(3)!;
+          double downloadSpeed = double.parse(match.group(4)!);
+          String speed = match.group(5)!;
+          
+          // String example = "[download]   7.1% of   19.13MiB at  783.17KiB/s ETA 00:23";  
+          downloadProgress = "$progress% of $size $mb";
+          notifyListeners();
+        }
+      // }
     });
   }
 
@@ -102,7 +121,6 @@ class ConfigState extends ChangeNotifier{
 
     // print("kek?");
     // process.stdout.transform(utf8.decoder).forEach((element) {
-    //   print("suko?");
     //   print(element);
     // }).onError((error, stackTrace){
     //   print(error);    

@@ -3,6 +3,7 @@ class VideoDescrtiption{
   String uploader = "";
   String thumbnaillUrl = "";
   String duration = "";
+  String downloadProgress = "";
 
   VideoDescrtiption({
     this.title = "",
