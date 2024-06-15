@@ -122,10 +122,20 @@ class ConfigState extends ChangeNotifier{
   }
 
   // [download]   7.1% of   19.13MiB at  783.17KiB/s ETA 00:23
+  // Here we need the context to show error snackbar
   void download() async {
     if(!includeAudio && !includeVideo){
       return;
     }
+    
+    for(VideoDescrtiption vd in videoDescrtiptions){
+      vd.downloadProgress = "";
+      vd.errorText = "";
+
+      currentState = AppState.DOWNLOADING;
+      notifyListeners();
+    }
+
     // String params = "";
     StringBuffer params = StringBuffer();
 
@@ -171,6 +181,7 @@ class ConfigState extends ChangeNotifier{
     // https://www.youtube.com/watch?v=Qp3b-RXtz4w&list=PLiQl43ty5itMxxRIXpTSJzTFktwJaGwDQ&pp=gAQBiAQB
     int currentVideoIndex = 0;
     process.stdout.transform(utf8.decoder).forEach((output) {
+      print(output);
 
       var indexMatch = indexOutOf.firstMatch(output);
       if(indexMatch != null){
@@ -178,7 +189,6 @@ class ConfigState extends ChangeNotifier{
           currentVideoIndex = int.parse(indexMatch.group(1)!);
         }
       }
-        print(currentVideoIndex);
       var match = downloadProgressRegExp.firstMatch(output);
       // print(output);
       if(match != null){
@@ -193,10 +203,30 @@ class ConfigState extends ChangeNotifier{
         notifyListeners();
       }
       // }
+    }).whenComplete((){
+      currentState = AppState.IDLE;
+      notifyListeners();
     });
 
     process.stderr.transform(utf8.decoder).forEach((output) {
-        print(output);
+      String? error = output.split(':')[2].replaceAll('\n', '');
+      if(error.contains("not available")){
+        error = "Requested format is not available";
+      }
+      if(error != null){
+        videoDescrtiptions[currentVideoIndex].errorText = error;
+      }
+
+      notifyListeners();
+      // errorText = output;
+      //   var snackBar = SnackBar(
+      //     content: Text(errorText),
+      //   );
+
+      //   // Find the ScaffoldMessenger in the widget tree
+      //   // and use it to show a SnackBar.
+      //   ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      print(output);
       // }
     });
   }

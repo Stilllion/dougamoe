@@ -4,6 +4,7 @@ class VideoDescrtiption{
   String thumbnaillUrl = "";
   String duration = "";
   String downloadProgress = "";
+  String errorText = "";
 
   VideoDescrtiption({
     this.title = "",
