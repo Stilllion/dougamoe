@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:dougamoe/config_state.dart';
 import 'package:dougamoe/options_menu.dart';
@@ -9,53 +10,55 @@ import 'package:file_picker/file_picker.dart';
 void main() {
   runApp(ChangeNotifierProvider(    
     create: (BuildContext context) => ConfigState(),
-    child: const MyApp()));
+    child: const DougaMoe()));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
+class DougaMoe extends StatelessWidget {
+  const DougaMoe({super.key});
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      themeMode: ThemeMode.light,
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.pink, brightness: Brightness.dark),
-        textTheme: const TextTheme(
-          displayMedium: TextStyle(
-            fontSize: 42
+    return Selector<ConfigState, bool>(
+      selector: (BuildContext , ConfigState) => ConfigState.darkMode,
+      builder: (BuildContext context, bool darkMode, Widget? child) {
+        return MaterialApp(
+          title: 'Douga Moe',
+          themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.pink, brightness: Brightness.dark),
+            textTheme: const TextTheme(
+              displayMedium: TextStyle(
+                fontSize: 42
+              ),
+            ),
           ),
-        ),
-
-        /* dark theme settings */
-      ),
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.pink),
-        brightness: Brightness.light,      
-        textTheme: const TextTheme(
-          displayMedium: TextStyle(
-            fontSize: 42
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.pink),
+            brightness: Brightness.light,      
+            textTheme: const TextTheme(
+              displayMedium: TextStyle(
+                fontSize: 42
+              ),
+            ),
+            useMaterial3: true,
           ),
-        ),
-        useMaterial3: true,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+          home: const HomaPage(title: 'Flutter Demo Home Page'),
+        );
+      }
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+class HomaPage extends StatefulWidget {
+  const HomaPage({super.key, required this.title});
 
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<HomaPage> createState() => _HomaPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _HomaPageState extends State<HomaPage> {
   TextEditingController urlTextController = TextEditingController();
 
   @override
@@ -63,6 +66,35 @@ class _MyHomePageState extends State<MyHomePage> {
     ConfigState config = Provider.of<ConfigState>(context, listen: false);
 
     return Scaffold(
+      floatingActionButton: Container(
+        width: 48,
+        height: 48,
+        child: FloatingActionButton(
+          child: Icon(Icons.settings),        
+          onPressed: (){
+            showModalBottomSheet(
+              context: context,
+              barrierColor: Colors.black.withOpacity(0.2),
+              builder: (context){
+                return Container(
+                  width: MediaQuery.of(context).size.width,
+                  color: Colors.green.shade100,
+                  child: Column(
+                    children: [
+                      Text("Dark mode"),
+                      CupertinoSwitch(
+                        value: context.read<ConfigState>().darkMode,
+                        onChanged: (value){
+                          context.read<ConfigState>().setDarkMode(value);
+                        })
+                    ]
+                  ),
+                );
+              },
+          );
+          }
+        ),
+      ),
       body: DefaultTextStyle(
         style: TextStyle(
           inherit: true,

@@ -68,6 +68,12 @@ class ConfigState extends ChangeNotifier{
   String outputFile = "%(title)s.%(ext)s";
 
   AppState currentState = AppState.IDLE;
+  bool darkMode = false;
+  
+  void setDarkMode(bool value){
+    darkMode = value;
+    notifyListeners();
+  }
   
   void updateUrl(String newUrl){
     url = newUrl;
