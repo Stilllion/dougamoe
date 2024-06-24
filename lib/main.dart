@@ -66,35 +66,72 @@ class _HomaPageState extends State<HomaPage> {
     ConfigState config = Provider.of<ConfigState>(context, listen: false);
 
     return Scaffold(
-      floatingActionButton: Container(
-        width: 48,
-        height: 48,
-        child: FloatingActionButton(
-          child: Icon(Icons.settings),        
-          onPressed: (){
-            showModalBottomSheet(
-              context: context,
-              barrierColor: Colors.black.withOpacity(0.2),
-              builder: (context){
-                return Container(
-                  width: MediaQuery.of(context).size.width,
-                  color: Colors.green.shade100,
-                  child: Column(
-                    children: [
-                      Text("Dark mode"),
-                      CupertinoSwitch(
-                        value: context.read<ConfigState>().darkMode,
-                        onChanged: (value){
-                          context.read<ConfigState>().setDarkMode(value);
-                        })
-                    ]
-                  ),
-                );
-              },
-          );
-          }
-        ),
-      ),
+      // floatingActionButton: Container(
+      //   width: 48,
+      //   height: 48,
+      //   child: FloatingActionButton(
+      //     child: Icon(Icons.settings),        
+      //     onPressed: (){
+      //       String include = "";
+      //       int endIndex = config.videoDescrtiptions.length;
+      //       int startIndex = 1;
+      //       List<int> exlude = [];
+      //       // 0, 1, 1, 1, 1
+      //       // -I 1:2, 4:5
+      //       String section = "";
+
+      //       for(int i = 0; i < config.videoDescrtiptions.length; ++i){              
+      //         if(!config.videoDescrtiptions[i].include){
+      //           if(section.isNotEmpty){
+      //             if(include.length > 2){
+      //               include += ",$section";
+      //             } else {
+      //               include += "-I $section";
+      //             }
+      //           }
+                  
+      //           section = "";
+      //           startIndex = endIndex = i + 2;
+      //         } else {
+      //           endIndex = i + 1;
+      //           if(startIndex == endIndex){
+      //             section = "$startIndex";
+      //           } else {
+      //             section = "$startIndex:$endIndex";
+      //           }
+      //         }
+      //       }
+            
+      //       if(include.isEmpty){
+      //         print("-I $section");
+      //       } else {
+      //         print(include += ",$section");
+      //       }
+
+
+      //       // showModalBottomSheet(
+      //       //   context: context,
+      //       //   barrierColor: Colors.black.withOpacity(0.2),
+      //       //   builder: (context){
+      //       //     return Container(
+      //       //       width: MediaQuery.of(context).size.width,
+      //       //       color: Colors.green.shade100,
+      //       //       child: Column(
+      //       //         children: [
+      //       //           Text("Dark mode"),
+      //       //           CupertinoSwitch(
+      //       //             value: context.read<ConfigState>().darkMode,
+      //       //             onChanged: (value){
+      //       //               context.read<ConfigState>().setDarkMode(value);
+      //       //             })
+      //       //         ]
+      //       //       ),
+      //       //     );
+      //       //   },
+      //       // );
+      //     }
+      //   ),
+      // ),
       body: DefaultTextStyle(
         style: TextStyle(
           inherit: true,
@@ -187,8 +224,16 @@ class _HomaPageState extends State<HomaPage> {
               ),
               
               const SizedBox(height: 32,),
-                          
-              DownloadBtnAndOptions(),
+                                          
+              Container(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [                    
+                    Expanded(child: DownloadBtnAndOptions()),
+                  ],
+                ),
+              ),
                             
               const SizedBox(height: 16,),
             
@@ -202,6 +247,22 @@ class _HomaPageState extends State<HomaPage> {
   }
 }
 
+class VideoCount extends StatelessWidget{
+   const VideoCount({
+    super.key,
+  });
+  
+  @override
+  Widget build(BuildContext context) {
+    int total = context.watch<ConfigState>().videoDescrtiptions.entries.length;
+    int included = context.watch<ConfigState>().videoDescrtiptions.values.where((element) {
+      return element.include == true;
+    }).toList().length;
+
+    return Center(child: Text("$included / $total"));
+  }
+}
+
 class DownloadBtnAndOptions extends StatelessWidget {
   const DownloadBtnAndOptions({
     super.key,
@@ -211,16 +272,20 @@ class DownloadBtnAndOptions extends StatelessWidget {
   Widget build(BuildContext context) {
     bool disabled = context.watch<ConfigState>().currentState == AppState.DOWNLOADING;
     return Padding(
-      padding: const EdgeInsets.only(right: 30.0, left: 16),
+      padding: const EdgeInsets.only(right: 16.0, left: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           OutlinedButton.icon(                            
-            onPressed: disabled ? null : (){
-              context.read<ConfigState>().download();
-            }, label: const Text("DOWNLOAD", style: TextStyle(fontSize: 18),),
-            icon: const Icon(Icons.download),
+            onPressed: (){
+              if(disabled){
+                context.read<ConfigState>().stopDownload();
+              } else {
+                context.read<ConfigState>().download();
+              }
+            }, label: Text(disabled ? "STOP" : "DOWNLOAD", style: TextStyle(fontSize: 18),),
+            icon: Icon(disabled ? Icons.cancel : Icons.download),
           ),
           DownloadOptions(),
         ],
@@ -249,9 +314,9 @@ class InfoDisplay extends StatelessWidget{
 
   @override
   Widget build(BuildContext context) {
-    return Selector<ConfigState, List<VideoDescrtiption>>(
+    return Selector<ConfigState, Map<String, VideoDescrtiption>>(
       selector: (BuildContext , ConfigState) => ConfigState.videoDescrtiptions,
-      builder: (BuildContext context, List<VideoDescrtiption> value, Widget? child) {
+      builder: (BuildContext context, Map<String, VideoDescrtiption> value, Widget? child) {
         return Column(
           children: [            
             Expanded(
@@ -298,10 +363,13 @@ class VideoList extends StatelessWidget {
     super.key,
   });
 
+
   @override
   Widget build(BuildContext context) {
+    final List<VideoDescrtiption> vds = context.watch<ConfigState>().videoDescrtiptions.values.toList();
+    
     return ListView.builder(
-      itemCount: context.watch<ConfigState>().videoDescrtiptions.length,
+      itemCount: vds.length,
       itemBuilder: (context, index){
         return Padding(
           padding: const EdgeInsets.only(bottom: 8.0),
@@ -313,7 +381,7 @@ class VideoList extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 CachedNetworkImage(
-                  imageUrl: context.read<ConfigState>().videoDescrtiptions[index].thumbnaillUrl,
+                  imageUrl: vds[index].thumbnaillUrl,
                   progressIndicatorBuilder: (context, url, downloadProgress) => 
                           CircularProgressIndicator(value: downloadProgress.progress),
                   errorWidget: (context, url, error) => const Icon(Icons.error),
@@ -321,49 +389,53 @@ class VideoList extends StatelessWidget {
                 
                 const SizedBox(width: 12,),
                 
-                Text(
-                  context.watch<ConfigState>().videoDescrtiptions[index].title
+                SelectableText(
+                  vds[index].title
                 ),
-                      
+
                 const Expanded(child: SizedBox()),
                 
-                Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
-                  child: Text(
-                    context.watch<ConfigState>().videoDescrtiptions[index].downloadProgress
-                  ),
-                ),
-            
+                
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(right: 16.0),
                     child: Text(
-                      context.watch<ConfigState>().videoDescrtiptions[index].errorText, style: TextStyle(
+                      vds[index].errorText, style: TextStyle(
                         color: Colors.red
                       ),
                     ),
                   ),
                 ),
+                
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: Text(
+                    vds[index].downloadProgress
+                  ),
+                ),
+            
+                Checkbox(
+                  value: vds[index].include,
+                  onChanged: (value){
+                    if(value != null){
+                      context.read<ConfigState>().toggleIncludeVideo(index, value);
+                    }
+                  }
+                ),
+
+                const SizedBox(width: 32,)
               ],
             ),
           ),
         );
-      }
-        // if (context.read<ConfigState>().currentState == AppState.LOADED)
-          // Text(
-          //     context.watch<ConfigState>().videoDescrtiption.title,
-          //     style: Theme.of(context).textTheme.headlineMedium,
-          //   ),
-            
-          // Text(
-          //   context.watch<ConfigState>().videoDescrtiption.duration,
-          //   style: Theme.of(context).textTheme.headlineMedium,
-          // ),    
+      }       
     );
   }
 }
 
 class DownloadOptions extends StatelessWidget {
+  const DownloadOptions({super.key});
+
   @override
   Widget build(BuildContext context) {
     ConfigState config = Provider.of<ConfigState>(context);
@@ -467,8 +539,6 @@ class DownloadOptions extends StatelessWidget {
               const Text("Audio"),
 
               Checkbox(
-                // checkColor: Colors.pink,
-                // fillColor: MaterialStateProperty.resolveWith(getColor),
                 value: config.includeAudio,
                 onChanged: (bool? value) {
                   config.toggleAudio();
@@ -491,6 +561,27 @@ class DownloadOptions extends StatelessWidget {
                   config.toggleVideo();
                 },
               ),
+            ],
+          ),
+          
+          const SizedBox(width: 42,),
+
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text("Include all"),
+              Checkbox(
+                value: config.includeAll,
+                onChanged: (value){
+                  if(value != null){
+                    context.read<ConfigState>().toggleIncludeForAll(value);
+                  }
+                }
+              ),
+              
+              const SizedBox(height: 4,),
+              
+              VideoCount(),
             ],
           ),
         ],

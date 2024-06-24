@@ -51,14 +51,17 @@ enum AudioContainer {
 class ConfigState extends ChangeNotifier{
   String url = "";
 
-  List<VideoDescrtiption> videoDescrtiptions = [];
+  Map<String, VideoDescrtiption> videoDescrtiptions = {};
   
   bool includeAudio = true;
   bool includeVideo = true;
 
+  bool includeAll = true;
+  
   String downloadPath = "./dl";
 
   String downloadProgress = "";
+  int? downloadPID;
 
   VideoHeight selectedVideoHeight = VideoHeight.Best;
 
@@ -80,7 +83,7 @@ class ConfigState extends ChangeNotifier{
     
     if(newUrl.isEmpty){
       // TODO: Resets display info
-      videoDescrtiptions = [];
+      videoDescrtiptions = {};
       currentState = AppState.IDLE;    
     } else {
       videoDescrtiptions.clear();
@@ -127,6 +130,70 @@ class ConfigState extends ChangeNotifier{
     notifyListeners();
   }
 
+  void toggleIncludeVideo(int index, bool value){
+    if(videoDescrtiptions.values.elementAt(index) != null){
+      videoDescrtiptions.values.elementAt(index).include = value;
+    }
+
+    notifyListeners();
+  }
+
+  void toggleIncludeForAll(bool value){
+    for(var vd in videoDescrtiptions.values){
+      vd.include = value;      
+    }
+    
+    includeAll = value;
+    notifyListeners();
+  }
+
+  void stopDownload(){
+    if(downloadPID != null){
+      Process.killPid(downloadPID!);
+      downloadPID = null;
+    }
+  }
+
+
+  String includeParams(){
+    String include = "";
+
+    int startIndex = 1;
+    int endIndex = 1;
+
+    String section = "";
+    List<VideoDescrtiption> descrList = videoDescrtiptions.values.toList();
+    
+    for(int i = 0; i < descrList.length; ++i){              
+      if(!descrList[i].include){
+        if(section.isNotEmpty){
+          if(include.length > 2){
+            include += ",$section";
+          } else {
+            include += "-I$section";
+          }
+        }
+          
+        section = "";
+        startIndex = endIndex = i + 2;
+      } else {
+        endIndex = i + 1;
+        
+        if(startIndex == endIndex){
+          section = "$startIndex";
+        } else {
+          section = "$startIndex:$endIndex";
+        }
+      }
+    }
+    
+    if(include.isEmpty){
+      return "-I$section";
+    } else {
+      return include;
+    }
+
+  }
   // [download]   7.1% of   19.13MiB at  783.17KiB/s ETA 00:23
   // Here we need the context to show error snackbar
   void download() async {
@@ -134,7 +201,7 @@ class ConfigState extends ChangeNotifier{
       return;
     }
     
-    for(VideoDescrtiption vd in videoDescrtiptions){
+    for(VideoDescrtiption vd in videoDescrtiptions.values){
       vd.downloadProgress = "";
       vd.errorText = "";
 
@@ -147,8 +214,7 @@ class ConfigState extends ChangeNotifier{
 
     // params.write("-P $downloadPath");
 
-    // params.write("-o $outputFile");
-    
+    // params.write("-o $outputFile");    
     params.write('-f ');
 
     if(includeVideo){
@@ -178,21 +244,25 @@ class ConfigState extends ChangeNotifier{
       "-o$outputFile",
       "-i",
       params.toString(),
+      includeParams(),
       url,
     ]);
-    final RegExp downloadProgressRegExp = RegExp(r'\[download\]\s+(\d+\.\d+)%\s+of\s+(\d+\.\d+)([a-zA-Z]+)\s+at\s+(\d+.\d+)([a-zA-Z/]+)');
+
+    downloadPID = process.pid;
+
+    final RegExp downloadProgressRegExp = RegExp(r'\[download\]\s+(\d+\.\d+)%\s+of\s+~?\s+(\d+\.\d+)([a-zA-Z]+)\s+at\s+(\d+.\d+)([a-zA-Z/]+)');
     // [download] Downloading item 1 of 28
-    final RegExp indexOutOf = RegExp(r'\[download\] Downloading item (\d+) of (\d+)');
+    final RegExp indexOutOf = RegExp(r'\[info\] (.+): Downloading');
 
     // https://www.youtube.com/watch?v=Qp3b-RXtz4w&list=PLiQl43ty5itMxxRIXpTSJzTFktwJaGwDQ&pp=gAQBiAQB
-    int currentVideoIndex = 0;
+    String currentVideoId = "";
     process.stdout.transform(utf8.decoder).forEach((output) {
       print(output);
 
       var indexMatch = indexOutOf.firstMatch(output);
       if(indexMatch != null){
         if(indexMatch.group(1) != null){
-          currentVideoIndex = int.parse(indexMatch.group(1)!);
+          currentVideoId = indexMatch.group(1)!;
         }
       }
       var match = downloadProgressRegExp.firstMatch(output);
@@ -205,7 +275,9 @@ class ConfigState extends ChangeNotifier{
         String speed = match.group(5)!;
         
         // String example = "[download]   7.1% of   19.13MiB at  783.17KiB/s ETA 00:23";  
-        videoDescrtiptions[currentVideoIndex].downloadProgress = "$progress% of $size $mb";
+        if(videoDescrtiptions[currentVideoId] != null){
+          videoDescrtiptions[currentVideoId]!.downloadProgress = "$progress% of $size $mb";
+        }
         notifyListeners();
       }
       // }
@@ -216,11 +288,14 @@ class ConfigState extends ChangeNotifier{
 
     process.stderr.transform(utf8.decoder).forEach((output) {
       String? error = output.split(':')[2].replaceAll('\n', '');
-      if(error.contains("not available")){
-        error = "Requested format is not available";
-      }
       if(error != null){
-        videoDescrtiptions[currentVideoIndex].errorText = error;
+        if(error.contains("not available")){
+          error = "Requested format is not available";
+        }
+      
+        if(videoDescrtiptions[currentVideoId] != null){
+          videoDescrtiptions[currentVideoId]!.errorText = error;
+        }
       }
 
       notifyListeners();
@@ -255,9 +330,9 @@ class ConfigState extends ChangeNotifier{
     } 
     List<dynamic> playlistJson = result.stdout.toString().trim().split('\n').map((video) => json.decode(video)).toList();
 
-    playlistJson.forEach((jsonDesc) {
-      videoDescrtiptions.add(VideoDescrtiption.fromJSON(jsonDesc));
-    });
+    for (var jsonDesc in playlistJson) {
+      videoDescrtiptions[jsonDesc["id"]] = VideoDescrtiption.fromJSON(jsonDesc);
+    }
     
 
     // print('${result.stdout}');
@@ -269,7 +344,6 @@ class ConfigState extends ChangeNotifier{
     //   url,
     // ]);
 
-    // print("kek?");
     // process.stdout.transform(utf8.decoder).forEach((element) {
     //   print(element);
     // }).onError((error, stackTrace){

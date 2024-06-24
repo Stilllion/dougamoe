@@ -6,6 +6,8 @@ class VideoDescrtiption{
   String downloadProgress = "";
   String errorText = "";
 
+  bool include = true;
+
   VideoDescrtiption({
     this.title = "",
     this.uploader = "",
