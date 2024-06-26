@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -7,9 +10,21 @@ import 'package:dougamoe/video_desc.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 
-void main() {
+void main() async {
+  Map<String, dynamic> conf = {};
+  
+  try{
+    File savedSettings = File("conf.json");
+    conf = jsonDecode(await savedSettings.readAsString());
+    print(conf);
+  } on PathNotFoundException{
+    File("conf.json").create();
+  } on Exception{
+    print("Failed to load config file");
+  }
+
   runApp(ChangeNotifierProvider(    
-    create: (BuildContext context) => ConfigState(),
+    create: (BuildContext context) => ConfigState(conf),
     child: const DougaMoe()));
 }
 
@@ -18,7 +33,7 @@ class DougaMoe extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Selector<ConfigState, bool>(
-      selector: (BuildContext , ConfigState) => ConfigState.darkMode,
+      selector: (BuildContext , ConfigState) => ConfigState.appSettings["dark_mode"],
       builder: (BuildContext context, bool darkMode, Widget? child) {
         return MaterialApp(
           title: 'Douga Moe',
@@ -34,7 +49,7 @@ class DougaMoe extends StatelessWidget {
           ),
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.pink),
-            brightness: Brightness.light,      
+            brightness: Brightness.light,
             textTheme: const TextTheme(
               displayMedium: TextStyle(
                 fontSize: 42
@@ -147,8 +162,8 @@ class _HomaPageState extends State<HomaPage> {
                 padding: const EdgeInsets.all(8.0),
                 child: TextField(                              
                   decoration: InputDecoration(
-                    suffixIcon: Padding(
-                      padding: const EdgeInsets.all(8.0),
+                    suffixIcon: const Padding(
+                      padding: EdgeInsets.all(8.0),
                       child: LoadingIndicator(),
                     ),
                     // filled: true,                  
@@ -191,14 +206,14 @@ class _HomaPageState extends State<HomaPage> {
                           const SizedBox(height: 8,),
         
                           OutlinedButton.icon(
-                          onPressed: () async {
-                            String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
-                        
-                            if (selectedDirectory != null) {
-                              config.setDownloadPath(selectedDirectory);                  
-                            }
-                          }, icon: const Icon(Icons.folder),
-                          label: Text(context.watch<ConfigState>().downloadPath, style: TextStyle(
+                            onPressed: () async {
+                              String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+                          
+                              if (selectedDirectory != null) {
+                                config.setDownloadPath(selectedDirectory);                  
+                              }
+                            }, icon: const Icon(Icons.folder),
+                            label: Text(context.watch<ConfigState>().appSettings["download_path"], style: const TextStyle(
                             fontSize: 16
                           ),),
                         ),
@@ -214,11 +229,63 @@ class _HomaPageState extends State<HomaPage> {
                     //   },
                     //   icon: Icon(Icons.folder)
                     // ),
-                    const SizedBox(width: 16,),
-                
-                    // Text(),
-                    
                     const Expanded(child: SizedBox()),                                  
+
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                       children: [
+                          const Text("Console log"),
+                          
+                          const SizedBox(height: 8,),
+                         
+                          OutlinedButton.icon(
+                            style: const ButtonStyle(
+                              padding: MaterialStatePropertyAll(EdgeInsets.only(left: 8)),
+                            ),
+                            onPressed: () async {
+                              showModalBottomSheet(
+                                context: context,
+                                barrierColor: Colors.black.withOpacity(0.2),
+                                builder: (context){
+                                  List<String> log = context.watch<ConfigState>().consoleLog;
+                                  return Container(
+                                    padding: EdgeInsets.all(16),
+                                    width: MediaQuery.of(context).size.width,
+                                    // color: Colors.green.shade100,
+                                    child: ListView.builder(
+                                      itemCount: log.length,
+                                      itemBuilder: ((context, index) => Text(log[index]))
+                                    )
+                                  );
+                                },
+                              );                                                             
+                            }, icon: const Icon(Icons.settings),
+                            label: const SizedBox.shrink(),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(width: 16,),
+
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                       children: [
+                        const Text("Dark mode"),
+                        
+                        const SizedBox(height: 8,),
+                        Container(
+                          height: 31,
+                          child: FittedBox(
+                            child: Switch(                            
+                              value: context.read<ConfigState>().appSettings["dark_mode"],
+                              onChanged: (value){
+                              context.read<ConfigState>().setDarkMode(value);
+                              }
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -226,7 +293,7 @@ class _HomaPageState extends State<HomaPage> {
               const SizedBox(height: 32,),
                                           
               Container(
-                child: Row(
+                child: const Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [                    
@@ -284,10 +351,10 @@ class DownloadBtnAndOptions extends StatelessWidget {
               } else {
                 context.read<ConfigState>().download();
               }
-            }, label: Text(disabled ? "STOP" : "DOWNLOAD", style: TextStyle(fontSize: 18),),
+            }, label: Text(disabled ? "STOP" : "DOWNLOAD", style: const TextStyle(fontSize: 18),),
             icon: Icon(disabled ? Icons.cancel : Icons.download),
           ),
-          DownloadOptions(),
+          const DownloadOptions(),
         ],
       ),
     );
@@ -394,14 +461,13 @@ class VideoList extends StatelessWidget {
                 ),
 
                 const Expanded(child: SizedBox()),
-                
-                
+                                
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(right: 16.0),
                     child: Text(
                       vds[index].errorText, style: TextStyle(
-                        color: Colors.red
+                        color: Theme.of(context).colorScheme.error
                       ),
                     ),
                   ),
@@ -581,7 +647,7 @@ class DownloadOptions extends StatelessWidget {
               
               const SizedBox(height: 4,),
               
-              VideoCount(),
+              const VideoCount(),
             ],
           ),
         ],

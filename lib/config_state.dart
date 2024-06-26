@@ -47,8 +47,13 @@ enum AudioContainer {
   final String ext;
 }
 
-
 class ConfigState extends ChangeNotifier{
+  ConfigState(Map<String, dynamic> savedSettings){
+    if(savedSettings.isNotEmpty){
+      appSettings = savedSettings;
+    }
+  }
+
   String url = "";
 
   Map<String, VideoDescrtiption> videoDescrtiptions = {};
@@ -58,8 +63,7 @@ class ConfigState extends ChangeNotifier{
 
   bool includeAll = true;
   
-  String downloadPath = "./dl";
-
+  String pathToExe = "yt-dlp";
   String downloadProgress = "";
   int? downloadPID;
 
@@ -70,11 +74,29 @@ class ConfigState extends ChangeNotifier{
 
   String outputFile = "%(title)s.%(ext)s";
 
+  Map<String, dynamic> appSettings = {
+    "dark_mode": false,
+    "download_path": ""
+  };
+
   AppState currentState = AppState.IDLE;
-  bool darkMode = false;
+  List<String> consoleLog = []; 
   
   void setDarkMode(bool value){
-    darkMode = value;
+    appSettings["dark_mode"] = value;
+
+    File savedSettings = File("conf.json");
+    savedSettings.writeAsString(jsonEncode(appSettings));
+
+    notifyListeners();
+  }
+
+  void setDownloadPath(String newPath) {
+    appSettings["download_path"] = newPath;
+
+    File savedSettings = File("conf.json");
+    savedSettings.writeAsString(jsonEncode(appSettings));
+    
     notifyListeners();
   }
   
@@ -124,12 +146,7 @@ class ConfigState extends ChangeNotifier{
     notifyListeners();
   }
 
-  void setDownloadPath(String newPath){
-    downloadPath = newPath;
-
-    notifyListeners();
-  }
-
+ 
   void toggleIncludeVideo(int index, bool value){
     if(videoDescrtiptions.values.elementAt(index) != null){
       videoDescrtiptions.values.elementAt(index).include = value;
@@ -201,14 +218,6 @@ class ConfigState extends ChangeNotifier{
       return;
     }
     
-    for(VideoDescrtiption vd in videoDescrtiptions.values){
-      vd.downloadProgress = "";
-      vd.errorText = "";
-
-      currentState = AppState.DOWNLOADING;
-      notifyListeners();
-    }
-
     // String params = "";
     StringBuffer params = StringBuffer();
 
@@ -237,10 +246,23 @@ class ConfigState extends ChangeNotifier{
       params.write('[ext=${selectedAudioContainer.ext}]');
     }
     
+    
     // String temp = "-o $outputFile -f bv[height<=144]";
+    // On Linux we assume that the yt-dlp is in the PATH
+    // On Windows we use bundeled exe, for now
+   
+    if(Platform.isWindows){
+      String appPath = Platform.resolvedExecutable;
+      String appDir = appPath.substring(0, appPath.lastIndexOf(Platform.pathSeparator));
+  
+      pathToExe = Directory("$appDir/data/flutter_assets/assets/").listSync()
+        .where((element) => element.path
+        .endsWith('yt-dlp.exe'))
+        .first.path;    
+    }
 
-    var process = await Process.start('yt-dlp', [
-      "-P $downloadPath",
+    var process = await Process.start(pathToExe, [
+      "-P ${appSettings["download_path"]}",
       "-o$outputFile",
       "-i",
       params.toString(),
@@ -248,16 +270,25 @@ class ConfigState extends ChangeNotifier{
       url,
     ]);
 
+    for(VideoDescrtiption vd in videoDescrtiptions.values){
+      vd.downloadProgress = "";
+      vd.errorText = "";
+
+      currentState = AppState.DOWNLOADING;
+      notifyListeners();
+    }
+    consoleLog = [];
     downloadPID = process.pid;
 
     final RegExp downloadProgressRegExp = RegExp(r'\[download\]\s+(\d+\.\d+)%\s+of\s+~?\s+(\d+\.\d+)([a-zA-Z]+)\s+at\s+(\d+.\d+)([a-zA-Z/]+)');
     // [download] Downloading item 1 of 28
-    final RegExp indexOutOf = RegExp(r'\[info\] (.+): Downloading');
+    final RegExp indexOutOf = RegExp(r'\[.+\] (.+): Downloading');
 
     // https://www.youtube.com/watch?v=Qp3b-RXtz4w&list=PLiQl43ty5itMxxRIXpTSJzTFktwJaGwDQ&pp=gAQBiAQB
     String currentVideoId = "";
     process.stdout.transform(utf8.decoder).forEach((output) {
       print(output);
+      consoleLog.add(output);
 
       var indexMatch = indexOutOf.firstMatch(output);
       if(indexMatch != null){
@@ -280,24 +311,33 @@ class ConfigState extends ChangeNotifier{
         }
         notifyListeners();
       }
+      
+      // notifyListeners();
       // }
     }).whenComplete((){
       currentState = AppState.IDLE;
+      downloadPID = null;
       notifyListeners();
     });
 
     process.stderr.transform(utf8.decoder).forEach((output) {
-      String? error = output.split(':')[2].replaceAll('\n', '');
-      if(error != null){
-        if(error.contains("not available")){
-          error = "Requested format is not available";
-        }
-      
-        if(videoDescrtiptions[currentVideoId] != null){
-          videoDescrtiptions[currentVideoId]!.errorText = error;
-        }
+      if(output.contains("ERROR") && output.contains(currentVideoId)){
+        String? error = output.split(currentVideoId)[1].replaceAll('\n', '');
+        if(error != null){
+          if(error.contains("not available")){
+            error = "Requested format is not available";
+          }
+        
+          if(videoDescrtiptions[currentVideoId] != null){
+            videoDescrtiptions[currentVideoId]!.errorText = error;
+          }
+          
+          downloadPID = null;
+        }            
       }
 
+      print(output);
+      consoleLog.add(output);     
       notifyListeners();
       // errorText = output;
       //   var snackBar = SnackBar(
@@ -307,7 +347,6 @@ class ConfigState extends ChangeNotifier{
       //   // Find the ScaffoldMessenger in the widget tree
       //   // and use it to show a SnackBar.
       //   ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      print(output);
       // }
     });
   }
@@ -323,10 +362,21 @@ class ConfigState extends ChangeNotifier{
       // '"%(duration>%H:%M:%S.%s)s\n%(uploader)s\n%(title)s"'
     ];
 
-    var result = await Process.run('yt-dlp', [...infoArgs, url]);
+    if(Platform.isWindows){
+      String appPath = Platform.resolvedExecutable;
+      String appDir = appPath.substring(0, appPath.lastIndexOf(Platform.pathSeparator));
+  
+      pathToExe = Directory("$appDir/data/flutter_assets/assets/").listSync()
+        .where((element) => element.path
+        .endsWith('yt-dlp.exe'))
+        .first.path;    
+    }
+
+    var result = await Process.run(pathToExe, [...infoArgs, url]);
     
     if (result.stderr.isNotEmpty) {
       print('Error: ${result.stderr}');
+      consoleLog.add(result.stderr);
     } 
     List<dynamic> playlistJson = result.stdout.toString().trim().split('\n').map((video) => json.decode(video)).toList();
 
